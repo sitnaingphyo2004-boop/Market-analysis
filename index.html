@@ -9,319 +9,416 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#050510;color:#e0e0ff;font-family:'IBM Plex Mono','Courier New',monospace}
-  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0a2e}::-webkit-scrollbar-thumb{background:#1a1a4a;border-radius:3px}
-  input::placeholder{color:#3a3a6a}
-  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-  .mo{position:fixed;inset:0;background:rgba(5,5,16,0.97);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
-  .mb{background:#0a0a2e;border:1px solid #00f5d4;border-radius:12px;padding:28px;max-width:450px;width:100%}
-  .mi{width:100%;padding:10px 14px;background:#050510;border:1px solid #1a1a4a;border-radius:6px;color:#e0e0ff;font-family:inherit;font-size:13px;outline:none;transition:border-color .2s}
-  .mi:focus{border-color:#00f5d4}
-  .mbtn{margin-top:14px;width:100%;padding:12px;background:#00f5d422;border:1px solid #00f5d4;border-radius:6px;color:#00f5d4;font-family:inherit;font-size:14px;cursor:pointer;font-weight:700}
-  .mbtn:hover{background:#00f5d433}
-  .step{background:#050510;border:1px solid #1a1a4a;border-radius:6px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:#8080aa;line-height:1.9}
-  .step a{color:#00f5d4}
-  .step b{color:#e0e0ff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050510;color:#e0e0ff;font-family:'Courier New',monospace}
+input::placeholder{color:#3a3a6a}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.mo{position:fixed;inset:0;background:rgba(5,5,16,0.97);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.mb{background:#0a0a2e;border:1px solid #00f5d4;border-radius:12px;padding:28px;max-width:450px;width:100%}
+.mi{width:100%;padding:10px 14px;background:#050510;border:1px solid #1a1a4a;border-radius:6px;color:#e0e0ff;font-family:inherit;font-size:13px;outline:none}
+.mi:focus{border-color:#00f5d4}
+.mbtn{margin-top:14px;width:100%;padding:12px;background:#00f5d422;border:1px solid #00f5d4;border-radius:6px;color:#00f5d4;font-family:inherit;font-size:14px;cursor:pointer;font-weight:700}
+.step{background:#050510;border:1px solid #1a1a4a;border-radius:6px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:#8080aa;line-height:1.9}
+.step a{color:#00f5d4}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState,useCallback} = React;
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL    = "llama-3.3-70b-versatile";
+var useState = React.useState;
+var useCallback = React.useCallback;
 
-const CATS = [
-{id:“tech”,    label:“Technology”,     icon:“💻”,color:”#00f5d4”},
-{id:“finance”, label:“Finance”,        icon:“💰”,color:”#fee440”},
-{id:“health”,  label:“Health”,         icon:“🏥”,color:”#f15bb5”},
-{id:“retail”,  label:“Retail/E-comm”,  icon:“🛒”,color:”#9b5de5”},
-{id:“food”,    label:“Food & Bev”,     icon:“🍔”,color:”#fb5607”},
-{id:“edu”,     label:“Education”,      icon:“📚”,color:”#4cc9f0”},
+var GROQ_URL = “https://api.groq.com/openai/v1/chat/completions”;
+var MODEL = “llama-3.3-70b-versatile”;
+
+var CATS = [
+{id:“tech”,    label:“Technology”,   icon:“💻”, color:”#00f5d4”},
+{id:“finance”, label:“Finance”,      icon:“💰”, color:”#fee440”},
+{id:“health”,  label:“Health”,       icon:“🏥”, color:”#f15bb5”},
+{id:“retail”,  label:“Retail”,       icon:“🛒”, color:”#9b5de5”},
+{id:“food”,    label:“Food & Bev”,   icon:“🍔”, color:”#fb5607”},
+{id:“edu”,     label:“Education”,    icon:“📚”, color:”#4cc9f0”}
 ];
-const REGIONS = [“Global”,“Southeast Asia”,“Myanmar”,“USA”,“Europe”,“China”];
+var REGIONS = [“Global”,“Southeast Asia”,“Myanmar”,“USA”,“Europe”,“China”];
 
-const SYS = `You are an elite market intelligence analyst. Respond with ONLY a valid JSON object. No markdown. No backticks. No text outside JSON. JSON structure: {"marketOverview":{"summary":"string","marketSize":"string","growthRate":"string","maturity":"emerging/growing/mature/declining","hotness":85},"needsAnalysis":{"coreNeeds":[{"need":"string","description":"string","urgency":"high/medium/low","gap":"string"}],"unmetNeeds":["string"]},"wantsAnalysis":{"topWants":[{"want":"string","description":"string","willingnessToPay":"high/medium/low","trend":"rising/stable/falling"}],"emergingWants":["string"]},"demandAnalysis":{"currentDemand":"string","demandDrivers":["string"],"demandBarriers":["string"],"forecast":"string"},"opportunities":[{"title":"string","description":"string","potential":"high/medium/low","timeToMarket":"string","investment":"string","difficulty":60,"roi":"string","actionSteps":["string"]}],"financialInsights":{"revenueModels":["string"],"avgMargins":"string","breakEvenTimeline":"string","fundingLandscape":"string","keyMetrics":[{"metric":"string","benchmark":"string","importance":"string"}]},"competitiveMap":{"leaders":["string"],"challengers":["string"],"gaps":["string"],"whitespace":"string"},"actionableStrategies":[{"strategy":"string","description":"string","resources":"string","timeline":"string","riskLevel":"low/medium/high"}],"redFlags":["string"],"verdict":"string"}`;
+var SYS = ‘You are an elite market intelligence analyst. Respond with ONLY a valid JSON object. No markdown. No backticks. No text outside JSON. Use this structure: {“marketOverview”:{“summary”:“string”,“marketSize”:“string”,“growthRate”:“string”,“maturity”:“string”,“hotness”:80},“needsAnalysis”:{“coreNeeds”:[{“need”:“string”,“description”:“string”,“urgency”:“high”,“gap”:“string”}],“unmetNeeds”:[“string”]},“wantsAnalysis”:{“topWants”:[{“want”:“string”,“description”:“string”,“willingnessToPay”:“high”,“trend”:“rising”}],“emergingWants”:[“string”]},“demandAnalysis”:{“currentDemand”:“string”,“demandDrivers”:[“string”],“demandBarriers”:[“string”],“forecast”:“string”},“opportunities”:[{“title”:“string”,“description”:“string”,“potential”:“high”,“timeToMarket”:“string”,“investment”:“string”,“difficulty”:60,“roi”:“string”,“actionSteps”:[“string”]}],“financialInsights”:{“revenueModels”:[“string”],“avgMargins”:“string”,“breakEvenTimeline”:“string”,“fundingLandscape”:“string”,“keyMetrics”:[{“metric”:“string”,“benchmark”:“string”,“importance”:“string”}]},“competitiveMap”:{“leaders”:[“string”],“challengers”:[“string”],“gaps”:[“string”],“whitespace”:“string”},“actionableStrategies”:[{“strategy”:“string”,“description”:“string”,“resources”:“string”,“timeline”:“string”,“riskLevel”:“low”}],“redFlags”:[“string”],“verdict”:“string”}’;
 
-function Modal({onSave}){
-const [k,setK]=useState(””); const [err,setErr]=useState(””);
-const go=()=>{
-if(!k.trim().startsWith(“gsk_”)){setErr(“Groq key သည် gsk_ ဖြင့်စတင်ရမည်”);return;}
+function Modal(props) {
+var onSave = props.onSave;
+var kv = useState(””); var k = kv[0]; var setK = kv[1];
+var ev = useState(””); var err = ev[0]; var setErr = ev[1];
+function go() {
+if (!k.trim().startsWith(“gsk_”)) { setErr(“Groq key သည် gsk_ ဖြင့်စတင်ရမည်”); return; }
 onSave(k.trim());
-};
-return(
-<div className="mo"><div className="mb">
-<div style={{color:”#00f5d4”,fontSize:18,fontWeight:700}}>◈ MARKET INTEL <span style={{fontSize:10,background:”#00f5d422”,border:“1px solid #00f5d4”,padding:“2px 8px”,borderRadius:20,marginLeft:6}}>FREE</span></div>
-<div style={{color:”#5555aa”,fontSize:11,marginTop:6,marginBottom:16,lineHeight:1.7}}>Groq API (အခမဲ့) — LLaMA 3.3 70B model သုံး၍ Market Analysis လုပ်ပေးပါမည်</div>
-<div className="step">
-<span style={{color:”#00f5d4”,fontWeight:700}}>Step 1.</span> <a href="https://console.groq.com" target="_blank">console.groq.com</a> သွားပါ → Free Sign Up<br/>
-<span style={{color:”#00f5d4”,fontWeight:700}}>Step 2.</span> <b>API Keys</b> menu → <b>Create API Key</b> နှိပ်ပါ<br/>
-<span style={{color:”#00f5d4”,fontWeight:700}}>Step 3.</span> Key ကို copy ကူးပြီး အောက်တွင် paste လုပ်ပါ
-</div>
-<div style={{color:”#8080aa”,fontSize:10,marginBottom:6}}>GROQ API KEY</div>
-<input className=“mi” type=“password” placeholder=“gsk_xxxxxxxxxxxx” value={k}
-onChange={e=>{setK(e.target.value);setErr(””)}}
-onKeyDown={e=>e.key===“Enter”&&go()}/>
-{err&&<div style={{color:”#ff4d6d”,fontSize:11,marginTop:5}}>⚠ {err}</div>}
-<button className="mbtn" onClick={go}>ENTER DASHBOARD →</button>
-<div style={{color:”#3a3a6a”,fontSize:10,marginTop:10,textAlign:“center”}}>Key သည် browser ထဲတွင်သာ သိမ်းဆည်းသည် — server သို့ မပို့ပါ</div>
-</div></div>
+}
+return React.createElement(“div”, {className:“mo”},
+React.createElement(“div”, {className:“mb”},
+React.createElement(“div”, {style:{color:”#00f5d4”,fontSize:18,fontWeight:700}}, “◈ MARKET INTEL “,
+React.createElement(“span”, {style:{fontSize:10,background:”#00f5d422”,border:“1px solid #00f5d4”,padding:“2px 8px”,borderRadius:20,marginLeft:6}}, “FREE”)
+),
+React.createElement(“div”, {style:{color:”#5555aa”,fontSize:11,marginTop:6,marginBottom:16,lineHeight:1.7}},
+“Groq API (အခမဲ့) — LLaMA 3.3 70B model သုံး၍ Market Analysis လုပ်ပေးပါမည်”
+),
+React.createElement(“div”, {className:“step”},
+React.createElement(“span”, {style:{color:”#00f5d4”,fontWeight:700}}, “Step 1. “),
+React.createElement(“a”, {href:“https://console.groq.com”,target:”_blank”}, “console.groq.com”),
+“ သွားပါ → Free Sign Up”, React.createElement(“br”),
+React.createElement(“span”, {style:{color:”#00f5d4”,fontWeight:700}}, “Step 2. “),
+“API Keys menu → Create API Key နှိပ်ပါ”, React.createElement(“br”),
+React.createElement(“span”, {style:{color:”#00f5d4”,fontWeight:700}}, “Step 3. “),
+“Key ကို copy ကူးပြီး အောက်တွင် paste လုပ်ပါ”
+),
+React.createElement(“div”, {style:{color:”#8080aa”,fontSize:10,marginBottom:6}}, “GROQ API KEY”),
+React.createElement(“input”, {
+className:“mi”, type:“password”, placeholder:“gsk_xxxxxxxxxxxx”,
+value:k, onChange:function(e){setK(e.target.value);setErr(””);},
+onKeyDown:function(e){if(e.key===“Enter”)go();}
+}),
+err ? React.createElement(“div”, {style:{color:”#ff4d6d”,fontSize:11,marginTop:5}}, “⚠ “+err) : null,
+React.createElement(“button”, {className:“mbtn”, onClick:go}, “ENTER DASHBOARD →”),
+React.createElement(“div”, {style:{color:”#3a3a6a”,fontSize:10,marginTop:10,textAlign:“center”}},
+“Key သည် browser ထဲတွင်သာ သိမ်းဆည်းသည်”
+)
+)
 );
 }
 
-function Dash({apiKey,onLogout}){
-const [cat,setCat]=useState(“finance”);
-const [rgn,setRgn]=useState(“Southeast Asia”);
-const [loading,setLoading]=useState(false);
-const [data,setData]=useState(null);
-const [err,setErr]=useState(null);
-const [ts,setTs]=useState(null);
-const [tab,setTab]=useState(“overview”);
-const [q,setQ]=useState(””);
+function btn(on, col, extra) {
+col = col || “#00f5d4”;
+var base = {padding:“6px 11px”,borderRadius:4,cursor:“pointer”,fontSize:12,fontFamily:“inherit”,
+border: on ? (“1px solid “+col) : “1px solid #1a1a4a”,
+background: on ? (col+“22”) : “transparent”,
+color: on ? col : “#5555aa”};
+if (extra) { Object.keys(extra).forEach(function(k){ base[k]=extra[k]; }); }
+return base;
+}
 
-const run=useCallback(async(c,r,qry=””)=>{
-setLoading(true);setErr(null);
-const msg=qry
-?`Market question: "${qry}" — ${c} sector, ${r}. Return ONLY JSON.`
-:`Deep market intelligence for ${c} sector in ${r} (2025). Real companies, numbers, Myanmar/SEA context. Return ONLY JSON.`;
-try{
-const res=await fetch(GROQ_URL,{
+function Dash(props) {
+var apiKey = props.apiKey; var onLogout = props.onLogout;
+var sv = useState(“finance”); var cat = sv[0]; var setCat = sv[1];
+var rv = useState(“Southeast Asia”); var rgn = rv[0]; var setRgn = rv[1];
+var lv = useState(false); var loading = lv[0]; var setLoading = lv[1];
+var dv = useState(null); var data = dv[0]; var setData = dv[1];
+var ev = useState(null); var err = ev[0]; var setErr = ev[1];
+var tv = useState(null); var ts = tv[0]; var setTs = tv[1];
+var tbv = useState(“overview”); var tab = tbv[0]; var setTab = tbv[1];
+var qv = useState(””); var q = qv[0]; var setQ = qv[1];
+
+var run = useCallback(function(c, r, qry) {
+qry = qry || “”;
+setLoading(true); setErr(null);
+var msg = qry
+? (“Market question: "”+qry+”" — “+c+” sector, “+r+”. Return ONLY JSON.”)
+: (“Deep market intelligence for “+c+” sector in “+r+” (2025). Real companies, numbers, Myanmar/SEA context. Return ONLY JSON.”);
+fetch(GROQ_URL, {
 method:“POST”,
-headers:{“Content-Type”:“application/json”,“Authorization”:`Bearer ${apiKey}`},
-body:JSON.stringify({model:MODEL,messages:[{role:“system”,content:SYS},{role:“user”,content:msg}],temperature:.7,max_tokens:2000})
-});
-if(!res.ok){const e=await res.json();throw new Error(e.error?.message||`HTTP ${res.status}`);}
-const j=await res.json();
-let t=j.choices?.[0]?.message?.content||””;
-t=t.replace(/^`(?:json)?\s*/i,"").replace(/\s*`\s*$/i,””).trim();
-const s=t.indexOf(”{”),e2=t.lastIndexOf(”}”);
-if(s<0||e2<0)throw new Error(“JSON မတွေ့ပါ — retry လုပ်ပါ”);
-setData(JSON.parse(t.slice(s,e2+1)));
+headers:{“Content-Type”:“application/json”,“Authorization”:“Bearer “+apiKey},
+body:JSON.stringify({model:MODEL,messages:[{role:“system”,content:SYS},{role:“user”,content:msg}],temperature:0.7,max_tokens:2000})
+}).then(function(res) {
+if (!res.ok) return res.json().then(function(e){ throw new Error(e.error && e.error.message ? e.error.message : “HTTP “+res.status); });
+return res.json();
+}).then(function(j) {
+var t = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) ? j.choices[0].message.content : “”;
+t = t.replace(/^`(?:json)?\s*/i,"").replace(/\s*`\s*$/i,””).trim();
+var s = t.indexOf(”{”); var e2 = t.lastIndexOf(”}”);
+if (s < 0 || e2 < 0) throw new Error(“JSON မတွေ့ပါ — Retry လုပ်ပါ”);
+setData(JSON.parse(t.slice(s, e2+1)));
 setTs(new Date());
-}catch(e){setErr(e.message);}
-finally{setLoading(false);}
-},[apiKey]);
+}).catch(function(e) {
+setErr(e.message);
+}).finally(function() {
+setLoading(false);
+});
+}, [apiKey]);
 
-const uc=l=>({high:”#ff4d6d”,medium:”#fee440”,low:”#4cc9f0”}[l]||”#aaa”);
-const ti=t=>({rising:“↑”,falling:“↓”,stable:“→”}[t]||“→”);
-const tc=t=>({rising:”#00f5d4”,falling:”#ff4d6d”,stable:”#aaa”}[t]||”#aaa”);
-const B=(on,col=”#00f5d4”,ex={})=>({padding:“6px 11px”,borderRadius:4,cursor:“pointer”,fontSize:12,fontFamily:“inherit”,border:on?`1px solid ${col}`:“1px solid #1a1a4a”,background:on?`${col}22`:“transparent”,color:on?col:”#5555aa”,transition:“all .2s”,…ex});
-const Card=({children,col=”#1a1a4a”,top})=>(<div style={{background:”#0a0a2e”,border:`1px solid ${col}`,borderRadius:6,padding:13,borderTop:top?`3px solid ${top}`:undefined}}>{children}</div>);
+function uc(l) { return {high:”#ff4d6d”,medium:”#fee440”,low:”#4cc9f0”}[l] || “#aaa”; }
+function ti(t) { return {rising:“↑”,falling:“↓”,stable:“→”}[t] || “→”; }
+function tc(t) { return {rising:”#00f5d4”,falling:”#ff4d6d”,stable:”#aaa”}[t] || “#aaa”; }
 
-return(
-<div style={{minHeight:“100vh”,background:”#050510”}}>
-{/* HEADER */}
-<div style={{background:“linear-gradient(135deg,#0a0a2e,#12124a,#0a0a2e)”,borderBottom:“1px solid #1a1a4a”,padding:“13px 17px”,position:“sticky”,top:0,zIndex:100}}>
-<div style={{display:“flex”,justifyContent:“space-between”,alignItems:“center”,flexWrap:“wrap”,gap:7}}>
-<div>
-<span style={{fontSize:17,fontWeight:700,color:”#00f5d4”,letterSpacing:”.1em”}}>◈ MARKET INTEL</span>
-<span style={{fontSize:9,background:”#00f5d422”,border:“1px solid #00f5d4”,color:”#00f5d4”,padding:“1px 6px”,borderRadius:20,marginLeft:7,verticalAlign:“middle”}}>FREE · GROQ</span>
-<div style={{fontSize:9,color:”#5555aa”,marginTop:2}}>NEEDS · WANTS · DEMAND · FINANCE · OPPORTUNITY</div>
-</div>
-<div style={{display:“flex”,gap:7,alignItems:“center”}}>
-{ts&&<span style={{fontSize:9,color:”#5555aa”}}><span style={{color:”#00f5d4”}}>●</span> {ts.toLocaleTimeString()}</span>}
-<button onClick={onLogout} style={{…B(false),fontSize:9,padding:“3px 7px”}}>CHANGE KEY</button>
-</div>
-</div>
-<div style={{marginTop:9,display:“flex”,gap:5,flexWrap:“wrap”}}>
-{CATS.map(c=><button key={c.id} style={B(cat===c.id,c.color)} onClick={()=>setCat(c.id)}>{c.icon} {c.label}</button>)}
-</div>
-<div style={{marginTop:6,display:“flex”,gap:5,flexWrap:“wrap”,alignItems:“center”}}>
-{REGIONS.map(r=><button key={r} style={B(rgn===r,”#9b5de5”)} onClick={()=>setRgn(r)}>{r}</button>)}
-<button onClick={()=>run(cat,rgn)} disabled={loading} style={{…B(true),marginLeft:“auto”,opacity:loading?.6:1,cursor:loading?“not-allowed”:“pointer”}}>
-{loading?“⟳ ANALYZING…”:“⟳ REFRESH”}
-</button>
-</div>
-<div style={{marginTop:6,display:“flex”,gap:6}}>
-<input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key===“Enter”&&q&&run(cat,rgn,q)}
-placeholder=“Custom question… (e.g. fintech gaps in Myanmar 2025)”
-style={{flex:1,padding:“6px 11px”,background:”#0a0a2e”,border:“1px solid #1a1a4a”,borderRadius:4,color:”#e0e0ff”,fontFamily:“inherit”,fontSize:12,outline:“none”}}/>
-<button onClick={()=>q&&run(cat,rgn,q)} disabled={!q||loading} style={B(!!q,”#fee440”)}>ASK →</button>
-</div>
-</div>
+var e = React.createElement;
+var d = data;
+
+return e(“div”, {style:{minHeight:“100vh”,background:”#050510”}},
+/* HEADER */
+e(“div”, {style:{background:“linear-gradient(135deg,#0a0a2e,#12124a,#0a0a2e)”,borderBottom:“1px solid #1a1a4a”,padding:“13px 17px”,position:“sticky”,top:0,zIndex:100}},
+e(“div”, {style:{display:“flex”,justifyContent:“space-between”,alignItems:“center”,flexWrap:“wrap”,gap:7}},
+e(“div”, null,
+e(“span”, {style:{fontSize:17,fontWeight:700,color:”#00f5d4”}}, “◈ MARKET INTEL”),
+e(“span”, {style:{fontSize:9,background:”#00f5d422”,border:“1px solid #00f5d4”,color:”#00f5d4”,padding:“1px 6px”,borderRadius:20,marginLeft:7}}, “FREE · GROQ”),
+e(“div”, {style:{fontSize:9,color:”#5555aa”,marginTop:2}}, “NEEDS · WANTS · DEMAND · FINANCE · OPPORTUNITY”)
+),
+e(“div”, {style:{display:“flex”,gap:7,alignItems:“center”}},
+ts ? e(“span”, {style:{fontSize:9,color:”#5555aa”}}, “● “+ts.toLocaleTimeString()) : null,
+e(“button”, {onClick:onLogout, style:btn(false,”#00f5d4”,{fontSize:9,padding:“3px 7px”})}, “CHANGE KEY”)
+)
+),
+e(“div”, {style:{marginTop:9,display:“flex”,gap:5,flexWrap:“wrap”}},
+CATS.map(function(c) {
+return e(“button”, {key:c.id, style:btn(cat===c.id,c.color), onClick:function(){setCat(c.id);}}, c.icon+” “+c.label);
+})
+),
+e(“div”, {style:{marginTop:6,display:“flex”,gap:5,flexWrap:“wrap”,alignItems:“center”}},
+REGIONS.map(function(r) {
+return e(“button”, {key:r, style:btn(rgn===r,”#9b5de5”), onClick:function(){setRgn(r);}}, r);
+}),
+e(“button”, {onClick:function(){run(cat,rgn);}, disabled:loading,
+style:btn(true,”#00f5d4”,{marginLeft:“auto”,opacity:loading?0.6:1,cursor:loading?“not-allowed”:“pointer”})},
+loading ? “⟳ ANALYZING…” : “⟳ REFRESH”
+)
+),
+e(“div”, {style:{marginTop:6,display:“flex”,gap:6}},
+e(“input”, {value:q, onChange:function(e2){setQ(e2.target.value);},
+onKeyDown:function(e2){if(e2.key===“Enter”&&q)run(cat,rgn,q);},
+placeholder:“Custom question… (e.g. fintech gaps in Myanmar 2025)”,
+style:{flex:1,padding:“6px 11px”,background:”#0a0a2e”,border:“1px solid #1a1a4a”,borderRadius:4,color:”#e0e0ff”,fontFamily:“inherit”,fontSize:12,outline:“none”}}),
+e(“button”, {onClick:function(){if(q)run(cat,rgn,q);}, disabled:!q||loading, style:btn(!!q,”#fee440”)}, “ASK →”)
+)
+),
 
 ```
-  <div style={{padding:"13px 17px",maxWidth:1200,margin:"0 auto"}}>
-    {err&&<div style={{padding:13,background:"#ff4d6d11",border:"1px solid #ff4d6d44",borderRadius:6,color:"#ff4d6d",marginBottom:13,fontSize:12,lineHeight:1.6}}>⚠ {err}</div>}
-    {loading&&<div style={{textAlign:"center",padding:"70px 20px"}}>
-      <div style={{fontSize:30,animation:"spin 1s linear infinite",display:"inline-block",color:"#00f5d4"}}>◈</div>
-      <div style={{color:"#00f5d4",marginTop:13,fontSize:13}}>Analyzing market data...</div>
-      <div style={{color:"#5555aa",fontSize:10,marginTop:4}}>Groq LLaMA 3.3 70B · Free · Fast</div>
-    </div>}
-    {!loading&&!data&&!err&&<div style={{textAlign:"center",padding:"70px 20px",color:"#5555aa"}}>
-      <div style={{fontSize:30,color:"#1a1a4a"}}>◈</div>
-      <div style={{marginTop:11}}>Category + Region ရွေးပြီး <span style={{color:"#00f5d4"}}>REFRESH</span> နှိပ်ပါ</div>
-    </div>}
+/* BODY */
+e("div", {style:{padding:"13px 17px",maxWidth:1200,margin:"0 auto"}},
+  err ? e("div", {style:{padding:13,background:"#ff4d6d11",border:"1px solid #ff4d6d44",borderRadius:6,color:"#ff4d6d",marginBottom:13,fontSize:12,lineHeight:1.6}}, "⚠ "+err) : null,
 
-    {!loading&&data&&(()=>{const d=data;return(<>
-      {/* STATS */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(135px,1fr))",gap:8,marginBottom:12}}>
-        {[["MARKET SIZE",d.marketOverview?.marketSize,"#00f5d4"],["GROWTH",d.marketOverview?.growthRate,"#fee440"],["MATURITY",d.marketOverview?.maturity?.toUpperCase(),"#9b5de5"],["HEAT",`${d.marketOverview?.hotness||0}/100`,"#fb5607"]].map(([l,v,c])=>(
-          <div key={l} style={{padding:"10px 12px",background:"#0a0a2e",border:"1px solid #1a1a4a",borderRadius:6}}>
-            <div style={{fontSize:9,color:"#5555aa",marginBottom:3}}>{l}</div>
-            <div style={{fontSize:13,fontWeight:700,color:c}}>{v||"—"}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{padding:12,background:"#0a1a2e",borderLeft:"3px solid #00f5d4",borderRadius:6,marginBottom:12,fontSize:12,color:"#c0c0e0",lineHeight:1.7}}>{d.marketOverview?.summary}</div>
+  loading ? e("div", {style:{textAlign:"center",padding:"70px 20px"}},
+    e("div", {style:{fontSize:30,animation:"spin 1s linear infinite",display:"inline-block",color:"#00f5d4"}}, "◈"),
+    e("div", {style:{color:"#00f5d4",marginTop:13}}, "Analyzing market data..."),
+    e("div", {style:{color:"#5555aa",fontSize:10,marginTop:4}}, "Groq LLaMA 3.3 70B · Free · Fast")
+  ) : null,
 
-      {/* TABS */}
-      <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:11}}>
-        {[["overview","Needs/Wants/Demand"],["opportunities","Opportunities"],["finance","Finance"],["strategy","Strategy"],["competitive","Competitive"]].map(([id,lbl])=>(
-          <button key={id} style={B(tab===id)} onClick={()=>setTab(id)}>{lbl}</button>
-        ))}
-      </div>
+  !loading && !d && !err ? e("div", {style:{textAlign:"center",padding:"70px 20px",color:"#5555aa"}},
+    e("div", {style:{fontSize:30,color:"#1a1a4a"}}, "◈"),
+    e("div", {style:{marginTop:11}}, "Category + Region ရွေးပြီး REFRESH နှိပ်ပါ")
+  ) : null,
 
-      {/* OVERVIEW */}
-      {tab==="overview"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
-        <Card>
-          <div style={{color:"#ff4d6d",fontWeight:700,marginBottom:9}}>▣ NEEDS (လိုအပ်ချက်)</div>
-          {d.needsAnalysis?.coreNeeds?.map((n,i)=>(
-            <div key={i} style={{marginBottom:8,padding:9,background:"#050510",borderRadius:4,border:"1px solid #1a1a4a"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{color:"#e0e0ff",fontWeight:600,fontSize:12}}>{n.need}</span>
-                <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:`${uc(n.urgency)}22`,color:uc(n.urgency)}}>{n.urgency?.toUpperCase()}</span>
-              </div>
-              <div style={{color:"#8080aa",fontSize:11}}>{n.description}</div>
-              <div style={{color:"#ff4d6d",fontSize:10,marginTop:3}}>Gap: {n.gap}</div>
-            </div>
-          ))}
-          <div style={{marginTop:5}}>
-            <div style={{color:"#5555aa",fontSize:9,marginBottom:4}}>UNMET NEEDS:</div>
-            {d.needsAnalysis?.unmetNeeds?.map((u,i)=><div key={i} style={{color:"#fee440",fontSize:11,marginBottom:2}}>→ {u}</div>)}
-          </div>
-        </Card>
-        <Card>
-          <div style={{color:"#9b5de5",fontWeight:700,marginBottom:9}}>▣ WANTS (လိုချင်ချက်)</div>
-          {d.wantsAnalysis?.topWants?.map((w,i)=>(
-            <div key={i} style={{marginBottom:8,padding:9,background:"#050510",borderRadius:4,border:"1px solid #1a1a4a"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{color:"#e0e0ff",fontWeight:600,fontSize:12}}>{w.want}</span>
-                <span style={{color:tc(w.trend),fontSize:15}}>{ti(w.trend)}</span>
-              </div>
-              <div style={{color:"#8080aa",fontSize:11}}>{w.description}</div>
-              <div style={{fontSize:10,marginTop:3}}><span style={{color:"#5555aa"}}>Pay: </span><span style={{color:"#9b5de5"}}>{w.willingnessToPay}</span></div>
-            </div>
-          ))}
-          <div style={{marginTop:5}}>
-            <div style={{color:"#5555aa",fontSize:9,marginBottom:4}}>EMERGING:</div>
-            {d.wantsAnalysis?.emergingWants?.map((e,i)=><div key={i} style={{color:"#4cc9f0",fontSize:11,marginBottom:2}}>↑ {e}</div>)}
-          </div>
-        </Card>
-        <Card>
-          <div style={{color:"#fee440",fontWeight:700,marginBottom:9}}>▣ DEMAND (လိုအင်ဆန္ဒ)</div>
-          <div style={{color:"#8080aa",fontSize:11,marginBottom:8,lineHeight:1.6}}>{d.demandAnalysis?.currentDemand}</div>
-          <div style={{marginBottom:7}}><div style={{color:"#00f5d4",fontSize:9,marginBottom:3}}>DRIVERS:</div>{d.demandAnalysis?.demandDrivers?.map((x,i)=><div key={i} style={{color:"#c0c0e0",fontSize:11,marginBottom:2}}>✓ {x}</div>)}</div>
-          <div style={{marginBottom:7}}><div style={{color:"#ff4d6d",fontSize:9,marginBottom:3}}>BARRIERS:</div>{d.demandAnalysis?.demandBarriers?.map((x,i)=><div key={i} style={{color:"#8080aa",fontSize:11,marginBottom:2}}>✗ {x}</div>)}</div>
-          <div style={{padding:9,background:"#fee44011",border:"1px solid #fee44033",borderRadius:4}}>
-            <div style={{color:"#fee440",fontSize:9,marginBottom:3}}>12-MONTH FORECAST</div>
-            <div style={{color:"#c0c0e0",fontSize:11}}>{d.demandAnalysis?.forecast}</div>
-          </div>
-        </Card>
-      </div>}
+  !loading && d ? (function(){
+    return e("div", null,
+      /* STATS */
+      e("div", {style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(135px,1fr))",gap:8,marginBottom:12}},
+        [["MARKET SIZE",d.marketOverview&&d.marketOverview.marketSize,"#00f5d4"],
+         ["GROWTH",d.marketOverview&&d.marketOverview.growthRate,"#fee440"],
+         ["MATURITY",d.marketOverview&&d.marketOverview.maturity&&d.marketOverview.maturity.toUpperCase(),"#9b5de5"],
+         ["HEAT",(d.marketOverview&&d.marketOverview.hotness||0)+"/100","#fb5607"]
+        ].map(function(x) {
+          return e("div", {key:x[0], style:{padding:"10px 12px",background:"#0a0a2e",border:"1px solid #1a1a4a",borderRadius:6}},
+            e("div", {style:{fontSize:9,color:"#5555aa",marginBottom:3}}, x[0]),
+            e("div", {style:{fontSize:13,fontWeight:700,color:x[2]}}, x[1]||"—")
+          );
+        })
+      ),
+      e("div", {style:{padding:12,background:"#0a1a2e",borderLeft:"3px solid #00f5d4",borderRadius:6,marginBottom:12,fontSize:12,color:"#c0c0e0",lineHeight:1.7}},
+        d.marketOverview && d.marketOverview.summary
+      ),
 
-      {/* OPPORTUNITIES */}
-      {tab==="opportunities"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12}}>
-        {d.opportunities?.map((o,i)=>(
-          <Card key={i} top={o.potential==="high"?"#00f5d4":o.potential==="medium"?"#fee440":"#9b5de5"}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
-              <div style={{fontWeight:700,color:"#e0e0ff",fontSize:13}}>{o.title}</div>
-              <span style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:o.potential==="high"?"#00f5d422":"#fee44022",color:o.potential==="high"?"#00f5d4":"#fee440"}}>{o.potential?.toUpperCase()}</span>
-            </div>
-            <div style={{color:"#8080aa",fontSize:11,marginBottom:9,lineHeight:1.6}}>{o.description}</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:9}}>
-              {[["Time",o.timeToMarket],["Invest",o.investment],["ROI",o.roi],["Diff",`${o.difficulty}/100`]].map(([l,v])=>(
-                <div key={l} style={{padding:"5px 8px",background:"#050510",borderRadius:4}}>
-                  <div style={{fontSize:9,color:"#5555aa"}}>{l}</div>
-                  <div style={{fontSize:11,color:"#00f5d4"}}>{v}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{borderTop:"1px solid #1a1a4a",paddingTop:8}}>
-              <div style={{fontSize:9,color:"#5555aa",marginBottom:5}}>ACTION STEPS:</div>
-              {o.actionSteps?.map((s,j)=><div key={j} style={{color:"#c0c0e0",fontSize:11,marginBottom:3}}><span style={{color:"#00f5d4"}}>{j+1}.</span> {s}</div>)}
-            </div>
-          </Card>
-        ))}
-      </div>}
+      /* TABS */
+      e("div", {style:{display:"flex",gap:4,flexWrap:"wrap",marginBottom:11}},
+        [["overview","Needs/Wants/Demand"],["opportunities","Opportunities"],["finance","Finance"],["strategy","Strategy"],["competitive","Competitive"]].map(function(x){
+          return e("button", {key:x[0], style:btn(tab===x[0]), onClick:function(){setTab(x[0]);}}, x[1]);
+        })
+      ),
 
-      {/* FINANCE */}
-      {tab==="finance"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
-        <Card col="#fee44033">
-          <div style={{color:"#fee440",fontWeight:700,marginBottom:11}}>💰 FINANCIAL INSIGHTS</div>
-          {[["Avg Margins",d.financialInsights?.avgMargins],["Break-Even",d.financialInsights?.breakEvenTimeline],["Funding",d.financialInsights?.fundingLandscape]].map(([l,v])=>(
-            <div key={l} style={{marginBottom:8}}><div style={{fontSize:9,color:"#5555aa",marginBottom:2}}>{l}</div><div style={{color:"#fee440",fontSize:12}}>{v}</div></div>
-          ))}
-          <div style={{marginTop:9}}><div style={{fontSize:9,color:"#5555aa",marginBottom:5}}>REVENUE MODELS:</div>{d.financialInsights?.revenueModels?.map((m,i)=><div key={i} style={{color:"#c0c0e0",fontSize:11,marginBottom:3}}>◆ {m}</div>)}</div>
-        </Card>
-        <Card>
-          <div style={{color:"#4cc9f0",fontWeight:700,marginBottom:11}}>📊 KEY METRICS</div>
-          {d.financialInsights?.keyMetrics?.map((m,i)=>(
-            <div key={i} style={{marginBottom:9,padding:9,background:"#050510",borderRadius:4}}>
-              <div style={{color:"#4cc9f0",fontWeight:600,fontSize:12,marginBottom:2}}>{m.metric}</div>
-              <div style={{color:"#fee440",fontSize:11,marginBottom:2}}>{m.benchmark}</div>
-              <div style={{color:"#8080aa",fontSize:10}}>{m.importance}</div>
-            </div>
-          ))}
-        </Card>
-      </div>}
+      /* OVERVIEW TAB */
+      tab==="overview" ? e("div", {style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}},
+        /* NEEDS */
+        e("div", {style:{background:"#0a0a2e",border:"1px solid #1a1a4a",borderRadius:6,padding:13}},
+          e("div", {style:{color:"#ff4d6d",fontWeight:700,marginBottom:9}}, "▣ NEEDS (လိုအပ်ချက်)"),
+          d.needsAnalysis && d.needsAnalysis.coreNeeds && d.needsAnalysis.coreNeeds.map(function(n,i){
+            return e("div", {key:i, style:{marginBottom:8,padding:9,background:"#050510",borderRadius:4,border:"1px solid #1a1a4a"}},
+              e("div", {style:{display:"flex",justifyContent:"space-between",marginBottom:3}},
+                e("span", {style:{color:"#e0e0ff",fontWeight:600,fontSize:12}}, n.need),
+                e("span", {style:{fontSize:9,padding:"1px 5px",borderRadius:3,background:uc(n.urgency)+"22",color:uc(n.urgency)}}, n.urgency&&n.urgency.toUpperCase())
+              ),
+              e("div", {style:{color:"#8080aa",fontSize:11}}, n.description),
+              e("div", {style:{color:"#ff4d6d",fontSize:10,marginTop:3}}, "Gap: "+n.gap)
+            );
+          }),
+          e("div", {style:{marginTop:5}},
+            e("div", {style:{color:"#5555aa",fontSize:9,marginBottom:4}}, "UNMET NEEDS:"),
+            d.needsAnalysis && d.needsAnalysis.unmetNeeds && d.needsAnalysis.unmetNeeds.map(function(u,i){
+              return e("div", {key:i, style:{color:"#fee440",fontSize:11,marginBottom:2}}, "→ "+u);
+            })
+          )
+        ),
+        /* WANTS */
+        e("div", {style:{background:"#0a0a2e",border:"1px solid #1a1a4a",borderRadius:6,padding:13}},
+          e("div", {style:{color:"#9b5de5",fontWeight:700,marginBottom:9}}, "▣ WANTS (လိုချင်ချက်)"),
+          d.wantsAnalysis && d.wantsAnalysis.topWants && d.wantsAnalysis.topWants.map(function(w,i){
+            return e("div", {key:i, style:{marginBottom:8,padding:9,background:"#050510",borderRadius:4,border:"1px solid #1a1a4a"}},
+              e("div", {style:{display:"flex",justifyContent:"space-between",marginBottom:3}},
+                e("span", {style:{color:"#e0e0ff",fontWeight:600,fontSize:12}}, w.want),
+                e("span", {style:{color:tc(w.trend),fontSize:15}}, ti(w.trend))
+              ),
+              e("div", {style:{color:"#8080aa",fontSize:11}}, w.description),
+              e("div", {style:{fontSize:10,marginTop:3}},
+                e("span", {style:{color:"#5555aa"}}, "Pay: "),
+                e("span", {style:{color:"#9b5de5"}}, w.willingnessToPay)
+              )
+            );
+          }),
+          e("div", {style:{marginTop:5}},
+            e("div", {style:{color:"#5555aa",fontSize:9,marginBottom:4}}, "EMERGING:"),
+            d.wantsAnalysis && d.wantsAnalysis.emergingWants && d.wantsAnalysis.emergingWants.map(function(x,i){
+              return e("div", {key:i, style:{color:"#4cc9f0",fontSize:11,marginBottom:2}}, "↑ "+x);
+            })
+          )
+        ),
+        /* DEMAND */
+        e("div", {style:{background:"#0a0a2e",border:"1px solid #1a1a4a",borderRadius:6,padding:13}},
+          e("div", {style:{color:"#fee440",fontWeight:700,marginBottom:9}}, "▣ DEMAND (လိုအင်ဆန္ဒ)"),
+          e("div", {style:{color:"#8080aa",fontSize:11,marginBottom:8,lineHeight:1.6}}, d.demandAnalysis&&d.demandAnalysis.currentDemand),
+          e("div", {style:{marginBottom:7}},
+            e("div", {style:{color:"#00f5d4",fontSize:9,marginBottom:3}}, "DRIVERS:"),
+            d.demandAnalysis && d.demandAnalysis.demandDrivers && d.demandAnalysis.demandDrivers.map(function(x,i){
+              return e("div", {key:i, style:{color:"#c0c0e0",fontSize:11,marginBottom:2}}, "✓ "+x);
+            })
+          ),
+          e("div", {style:{marginBottom:7}},
+            e("div", {style:{color:"#ff4d6d",fontSize:9,marginBottom:3}}, "BARRIERS:"),
+            d.demandAnalysis && d.demandAnalysis.demandBarriers && d.demandAnalysis.demandBarriers.map(function(x,i){
+              return e("div", {key:i, style:{color:"#8080aa",fontSize:11,marginBottom:2}}, "✗ "+x);
+            })
+          ),
+          e("div", {style:{padding:9,background:"#fee44011",border:"1px solid #fee44033",borderRadius:4}},
+            e("div", {style:{color:"#fee440",fontSize:9,marginBottom:3}}, "12-MONTH FORECAST"),
+            e("div", {style:{color:"#c0c0e0",fontSize:11}}, d.demandAnalysis&&d.demandAnalysis.forecast)
+          )
+        )
+      ) : null,
 
-      {/* STRATEGY */}
-      {tab==="strategy"&&<div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12,marginBottom:12}}>
-          {d.actionableStrategies?.map((s,i)=>(
-            <div key={i} style={{background:"#0a0a2e",border:"1px solid #1a1a4a",borderRadius:6,padding:13,borderLeft:`3px solid ${s.riskLevel==="low"?"#00f5d4":s.riskLevel==="medium"?"#fee440":"#ff4d6d"}`}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                <div style={{fontWeight:700,color:"#e0e0ff",fontSize:12}}>{s.strategy}</div>
-                <span style={{fontSize:9,color:s.riskLevel==="low"?"#00f5d4":s.riskLevel==="medium"?"#fee440":"#ff4d6d"}}>{s.riskLevel?.toUpperCase()} RISK</span>
-              </div>
-              <div style={{color:"#8080aa",fontSize:11,marginBottom:6,lineHeight:1.6}}>{s.description}</div>
-              <div style={{fontSize:11,marginBottom:2}}><span style={{color:"#5555aa"}}>Resources: </span><span style={{color:"#c0c0e0"}}>{s.resources}</span></div>
-              <div style={{fontSize:11}}><span style={{color:"#5555aa"}}>Timeline: </span><span style={{color:"#00f5d4"}}>{s.timeline}</span></div>
-            </div>
-          ))}
-        </div>
-        {d.redFlags?.length>0&&<div style={{padding:13,background:"#ff4d6d11",border:"1px solid #ff4d6d33",borderRadius:6}}>
-          <div style={{color:"#ff4d6d",fontWeight:700,marginBottom:7}}>⚠ RED FLAGS — သတိထားရမည့်အချက်</div>
-          {d.redFlags.map((f,i)=><div key={i} style={{color:"#c0c0e0",fontSize:11,marginBottom:3}}>⚡ {f}</div>)}
-        </div>}
-      </div>}
+      /* OPPORTUNITIES TAB */
+      tab==="opportunities" ? e("div", {style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12}},
+        d.opportunities && d.opportunities.map(function(o,i){
+          var topCol = o.potential==="high"?"#00f5d4":o.potential==="medium"?"#fee440":"#9b5de5";
+          return e("div", {key:i, style:{background:"#0a0a2e",borderRadius:6,padding:13,border:"1px solid #1a1a4a",borderTop:"3px solid "+topCol}},
+            e("div", {style:{display:"flex",justifyContent:"space-between",marginBottom:7}},
+              e("div", {style:{fontWeight:700,color:"#e0e0ff",fontSize:13}}, o.title),
+              e("span", {style:{fontSize:9,padding:"2px 7px",borderRadius:10,background:o.potential==="high"?"#00f5d422":"#fee44022",color:o.potential==="high"?"#00f5d4":"#fee440"}}, o.potential&&o.potential.toUpperCase())
+            ),
+            e("div", {style:{color:"#8080aa",fontSize:11,marginBottom:9,lineHeight:1.6}}, o.description),
+            e("div", {style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:9}},
+              [["Time",o.timeToMarket],["Invest",o.investment],["ROI",o.roi],["Diff",o.difficulty+"/100"]].map(function(x){
+                return e("div", {key:x[0], style:{padding:"5px 8px",background:"#050510",borderRadius:4}},
+                  e("div", {style:{fontSize:9,color:"#5555aa"}}, x[0]),
+                  e("div", {style:{fontSize:11,color:"#00f5d4"}}, x[1])
+                );
+              })
+            ),
+            e("div", {style:{borderTop:"1px solid #1a1a4a",paddingTop:8}},
+              e("div", {style:{fontSize:9,color:"#5555aa",marginBottom:5}}, "ACTION STEPS:"),
+              o.actionSteps && o.actionSteps.map(function(s,j){
+                return e("div", {key:j, style:{color:"#c0c0e0",fontSize:11,marginBottom:3}},
+                  e("span", {style:{color:"#00f5d4"}}, (j+1)+". "), s
+                );
+              })
+            )
+          );
+        })
+      ) : null,
 
-      {/* COMPETITIVE */}
-      {tab==="competitive"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
-        {[["MARKET LEADERS",d.competitiveMap?.leaders,"#ff4d6d"],["CHALLENGERS",d.competitiveMap?.challengers,"#fee440"],["MARKET GAPS",d.competitiveMap?.gaps,"#00f5d4"]].map(([lbl,items,c])=>(
-          <div key={lbl} style={{background:"#0a0a2e",border:`1px solid ${c}33`,borderRadius:6,padding:13}}>
-            <div style={{color:c,fontWeight:700,marginBottom:9}}>{lbl}</div>
-            {items?.map((x,i)=><div key={i} style={{color:"#c0c0e0",fontSize:12,marginBottom:5,padding:"5px 8px",background:"#050510",borderRadius:4}}>{x}</div>)}
-          </div>
-        ))}
-        <div style={{background:"#0a0a2e",border:"1px solid #9b5de533",borderRadius:6,padding:13,gridColumn:"1/-1"}}>
-          <div style={{color:"#9b5de5",fontWeight:700,marginBottom:6}}>🎯 WHITE SPACE OPPORTUNITY</div>
-          <div style={{color:"#c0c0e0",lineHeight:1.7,fontSize:12}}>{d.competitiveMap?.whitespace}</div>
-        </div>
-      </div>}
+      /* FINANCE TAB */
+      tab==="finance" ? e("div", {style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}},
+        e("div", {style:{background:"#0a0a2e",border:"1px solid #fee44033",borderRadius:6,padding:13}},
+          e("div", {style:{color:"#fee440",fontWeight:700,marginBottom:11}}, "💰 FINANCIAL INSIGHTS"),
+          [["Avg Margins",d.financialInsights&&d.financialInsights.avgMargins],
+           ["Break-Even",d.financialInsights&&d.financialInsights.breakEvenTimeline],
+           ["Funding",d.financialInsights&&d.financialInsights.fundingLandscape]
+          ].map(function(x){
+            return e("div", {key:x[0], style:{marginBottom:8}},
+              e("div", {style:{fontSize:9,color:"#5555aa",marginBottom:2}}, x[0]),
+              e("div", {style:{color:"#fee440",fontSize:12}}, x[1])
+            );
+          }),
+          e("div", {style:{marginTop:9}},
+            e("div", {style:{fontSize:9,color:"#5555aa",marginBottom:5}}, "REVENUE MODELS:"),
+            d.financialInsights && d.financialInsights.revenueModels && d.financialInsights.revenueModels.map(function(m,i){
+              return e("div", {key:i, style:{color:"#c0c0e0",fontSize:11,marginBottom:3}}, "◆ "+m);
+            })
+          )
+        ),
+        e("div", {style:{background:"#0a0a2e",border:"1px solid #1a1a4a",borderRadius:6,padding:13}},
+          e("div", {style:{color:"#4cc9f0",fontWeight:700,marginBottom:11}}, "📊 KEY METRICS"),
+          d.financialInsights && d.financialInsights.keyMetrics && d.financialInsights.keyMetrics.map(function(m,i){
+            return e("div", {key:i, style:{marginBottom:9,padding:9,background:"#050510",borderRadius:4}},
+              e("div", {style:{color:"#4cc9f0",fontWeight:600,fontSize:12,marginBottom:2}}, m.metric),
+              e("div", {style:{color:"#fee440",fontSize:11,marginBottom:2}}, m.benchmark),
+              e("div", {style:{color:"#8080aa",fontSize:10}}, m.importance)
+            );
+          })
+        )
+      ) : null,
 
-      {/* VERDICT */}
-      {d.verdict&&<div style={{marginTop:13,padding:17,background:"linear-gradient(135deg,#0a1a2e,#0a0a2e)",border:"1px solid #00f5d4",borderRadius:6,textAlign:"center"}}>
-        <div style={{fontSize:9,color:"#5555aa",marginBottom:7,letterSpacing:".1em"}}>◈ KEY VERDICT</div>
-        <div style={{color:"#00f5d4",fontSize:14,fontWeight:700,lineHeight:1.7}}>{d.verdict}</div>
-      </div>}
-    </>);})()} 
-  </div>
-</div>
+      /* STRATEGY TAB */
+      tab==="strategy" ? e("div", null,
+        e("div", {style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12,marginBottom:12}},
+          d.actionableStrategies && d.actionableStrategies.map(function(s,i){
+            var lc = s.riskLevel==="low"?"#00f5d4":s.riskLevel==="medium"?"#fee440":"#ff4d6d";
+            return e("div", {key:i, style:{background:"#0a0a2e",border:"1px solid #1a1a4a",borderRadius:6,padding:13,borderLeft:"3px solid "+lc}},
+              e("div", {style:{display:"flex",justifyContent:"space-between",marginBottom:5}},
+                e("div", {style:{fontWeight:700,color:"#e0e0ff",fontSize:12}}, s.strategy),
+                e("span", {style:{fontSize:9,color:lc}}, s.riskLevel&&s.riskLevel.toUpperCase()+" RISK")
+              ),
+              e("div", {style:{color:"#8080aa",fontSize:11,marginBottom:6,lineHeight:1.6}}, s.description),
+              e("div", {style:{fontSize:11,marginBottom:2}},
+                e("span", {style:{color:"#5555aa"}}, "Resources: "),
+                e("span", {style:{color:"#c0c0e0"}}, s.resources)
+              ),
+              e("div", {style:{fontSize:11}},
+                e("span", {style:{color:"#5555aa"}}, "Timeline: "),
+                e("span", {style:{color:"#00f5d4"}}, s.timeline)
+              )
+            );
+          })
+        ),
+        d.redFlags && d.redFlags.length > 0 ? e("div", {style:{padding:13,background:"#ff4d6d11",border:"1px solid #ff4d6d33",borderRadius:6}},
+          e("div", {style:{color:"#ff4d6d",fontWeight:700,marginBottom:7}}, "⚠ RED FLAGS — သတိထားရမည့်အချက်"),
+          d.redFlags.map(function(f,i){
+            return e("div", {key:i, style:{color:"#c0c0e0",fontSize:11,marginBottom:3}}, "⚡ "+f);
+          })
+        ) : null
+      ) : null,
+
+      /* COMPETITIVE TAB */
+      tab==="competitive" ? e("div", {style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}},
+        [["MARKET LEADERS",d.competitiveMap&&d.competitiveMap.leaders,"#ff4d6d"],
+         ["CHALLENGERS",d.competitiveMap&&d.competitiveMap.challengers,"#fee440"],
+         ["MARKET GAPS",d.competitiveMap&&d.competitiveMap.gaps,"#00f5d4"]
+        ].map(function(x){
+          return e("div", {key:x[0], style:{background:"#0a0a2e",border:"1px solid "+x[2]+"33",borderRadius:6,padding:13}},
+            e("div", {style:{color:x[2],fontWeight:700,marginBottom:9}}, x[0]),
+            x[1] && x[1].map(function(item,i){
+              return e("div", {key:i, style:{color:"#c0c0e0",fontSize:12,marginBottom:5,padding:"5px 8px",background:"#050510",borderRadius:4}}, item);
+            })
+          );
+        }),
+        e("div", {style:{background:"#0a0a2e",border:"1px solid #9b5de533",borderRadius:6,padding:13,gridColumn:"1/-1"}},
+          e("div", {style:{color:"#9b5de5",fontWeight:700,marginBottom:6}}, "🎯 WHITE SPACE OPPORTUNITY"),
+          e("div", {style:{color:"#c0c0e0",lineHeight:1.7,fontSize:12}}, d.competitiveMap&&d.competitiveMap.whitespace)
+        )
+      ) : null,
+
+      /* VERDICT */
+      d.verdict ? e("div", {style:{marginTop:13,padding:17,background:"linear-gradient(135deg,#0a1a2e,#0a0a2e)",border:"1px solid #00f5d4",borderRadius:6,textAlign:"center"}},
+        e("div", {style:{fontSize:9,color:"#5555aa",marginBottom:7}}, "◈ KEY VERDICT"),
+        e("div", {style:{color:"#00f5d4",fontSize:14,fontWeight:700,lineHeight:1.7}}, d.verdict)
+      ) : null
+    );
+  })() : null
+)
 ```
 
 );
 }
 
-function App(){
-const [k,setK]=useState(()=>sessionStorage.getItem(“gk”)||””);
-const save=v=>{sessionStorage.setItem(“gk”,v);setK(v);};
-const out=()=>{sessionStorage.removeItem(“gk”);setK(””);};
-return k?<Dash apiKey={k} onLogout={out}/>:<Modal onSave={save}/>;
+function App() {
+var kv = useState(function(){ return sessionStorage.getItem(“gk”) || “”; });
+var k = kv[0]; var setK = kv[1];
+function save(v) { sessionStorage.setItem(“gk”, v); setK(v); }
+function out() { sessionStorage.removeItem(“gk”); setK(””); }
+if (!k) return React.createElement(Modal, {onSave:save});
+return React.createElement(Dash, {apiKey:k, onLogout:out});
 }
-ReactDOM.createRoot(document.getElementById(“root”)).render(<App/>);
+
+ReactDOM.createRoot(document.getElementById(“root”)).render(React.createElement(App));
 </script>
 
 </body>
