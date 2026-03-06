@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Market Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #050510; color: #e0e0ff; font-family: 'IBM Plex Mono', 'Courier New', monospace; }
+  ::-webkit-scrollbar { width: 6px; } 
+  ::-webkit-scrollbar-track { background: #0a0a2e; }
+  ::-webkit-scrollbar-thumb { background: #1a1a4a; border-radius: 3px; }
+  input::placeholder { color: #3a3a6a; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+/* API KEY MODAL */
+.modal-overlay {
+position: fixed; inset: 0; background: rgba(5,5,16,0.95);
+display: flex; align-items: center; justify-content: center;
+z-index: 1000; padding: 20px;
+}
+.modal-box {
+background: #0a0a2e; border: 1px solid #00f5d4;
+border-radius: 10px; padding: 32px; max-width: 480px; width: 100%;
+}
+.modal-title { color: #00f5d4; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.modal-sub { color: #5555aa; font-size: 12px; margin-bottom: 24px; line-height: 1.6; }
+.modal-label { color: #8080aa; font-size: 11px; margin-bottom: 6px; display: block; }
+.modal-input {
+width: 100%; padding: 10px 14px; background: #050510;
+border: 1px solid #1a1a4a; border-radius: 6px; color: #e0e0ff;
+font-family: inherit; font-size: 13px; outline: none;
+transition: border-color 0.2s;
+}
+.modal-input:focus { border-color: #00f5d4; }
+.modal-btn {
+margin-top: 16px; width: 100%; padding: 12px;
+background: #00f5d422; border: 1px solid #00f5d4;
+border-radius: 6px; color: #00f5d4; font-family: inherit;
+font-size: 14px; cursor: pointer; font-weight: 700;
+transition: background 0.2s;
+}
+.modal-btn:hover { background: #00f5d433; }
+.modal-note { color: #3a3a6a; font-size: 10px; margin-top: 12px; text-align: center; }
+.modal-note a { color: #5555aa; }
+</style>
+
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+const categories = [
+  { id: "tech", label: "Technology", icon: "💻", color: "#00f5d4" },
+  { id: "finance", label: "Finance", icon: "💰", color: "#fee440" },
+  { id: "health", label: "Health", icon: "🏥", color: "#f15bb5" },
+  { id: "retail", label: "Retail/E-commerce", icon: "🛒", color: "#9b5de5" },
+  { id: "food", label: "Food & Beverage", icon: "🍔", color: "#fb5607" },
+  { id: "education", label: "Education", icon: "📚", color: "#4cc9f0" },
+];
+const regions = ["Global", "Southeast Asia", "Myanmar", "USA", "Europe", "China"];
+
+// ─── API KEY MODAL ───────────────────────────────────────────────
+function ApiKeyModal({ onSave }) {
+  const [key, setKey] = useState("");
+  const [err, setErr] = useState("");
+  const handle = () => {
+    if (!key.trim().startsWith("sk-ant-")) {
+      setErr("Key သည် 'sk-ant-' ဖြင့်စတင်ရမည်");
+      return;
+    }
+    onSave(key.trim());
+  };
+  return (
+    <div className="modal-overlay">
+      <div className="modal-box">
+        <div className="modal-title">◈ MARKET INTEL</div>
+        <div className="modal-sub">
+          ဒီ Dashboard သည် Anthropic API ကို တိုက်ရိုက်သုံးပါသည်။<br/>
+          သင့် Anthropic API Key ထည့်ပါ — key သည် browser ထဲတွင်သာ သိမ်းဆည်းမည်။
+        </div>
+        <label className="modal-label">ANTHROPIC API KEY</label>
+        <input
+          className="modal-input"
+          type="password"
+          placeholder="sk-ant-api03-..."
+          value={key}
+          onChange={e => { setKey(e.target.value); setErr(""); }}
+          onKeyDown={e => e.key === "Enter" && handle()}
+        />
+        {err && <div style={{color:"#ff4d6d",fontSize:11,marginTop:6}}>{err}</div>}
+        <button className="modal-btn" onClick={handle}>ENTER DASHBOARD →</button>
+        <div className="modal-note">
+          Key မရှိသေးပါက{" "}
+          <a href="https://console.anthropic.com" target="_blank" rel="noreferrer">
+            console.anthropic.com
+          </a>{" "}
+          မှ ရယူပါ
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN DASHBOARD ──────────────────────────────────────────────
+function Dashboard({ apiKey, onLogout }) {
+  const [selectedCategory, setSelectedCategory] = useState("finance");
+  const [selectedRegion, setSelectedRegion] = useState("Southeast Asia");
+  const [loading, setLoading] = useState(false);
+  const [analysisData, setAnalysisData] = useState(null);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [customQuery, setCustomQuery] = useState("");
+
+  const systemPrompt = `You are an elite market intelligence analyst with expertise in consumer behavior, finance, and market trends.
+Always respond with ONLY a valid JSON object (no markdown, no backticks, no text before or after).
+
+Return this exact JSON structure:
+{
+  "marketOverview": {
+    "summary": "2-3 sentence market overview",
+    "marketSize": "estimated market size",
+    "growthRate": "annual growth %",
+    "maturity": "emerging/growing/mature/declining",
+    "hotness": 85
+  },
+  "needsAnalysis": {
+    "coreNeeds": [
+      {"need": "need name", "description": "description", "urgency": "high/medium/low", "addressedBy": "who addresses it now", "gap": "what's missing"}
+    ],
+    "unmetNeeds": ["unmet need 1", "unmet need 2", "unmet need 3"]
+  },
+  "wantsAnalysis": {
+    "topWants": [
+      {"want": "want name", "description": "description", "willingnessToPay": "high/medium/low", "trend": "rising/stable/falling"}
+    ],
+    "emergingWants": ["emerging want 1", "emerging want 2", "emerging want 3"]
+  },
+  "demandAnalysis": {
+    "currentDemand": "description of current demand",
+    "demandDrivers": ["driver 1", "driver 2", "driver 3"],
+    "demandBarriers": ["barrier 1", "barrier 2", "barrier 3"],
+    "forecast": "12-month demand forecast"
+  },
+  "opportunities": [
+    {
+      "title": "opportunity title",
+      "description": "detailed description",
+      "potential": "high/medium/low",
+      "timeToMarket": "time estimate",
+      "investment": "investment needed",
+      "difficulty": 60,
+      "roi": "expected ROI",
+      "actionSteps": ["step 1", "step 2", "step 3"]
+    }
+  ],
+  "financialInsights": {
+    "revenueModels": ["model 1", "model 2"],
+    "avgMargins": "margin range",
+    "breakEvenTimeline": "timeline",
+    "fundingLandscape": "description",
+    "keyMetrics": [
+      {"metric": "metric name", "benchmark": "benchmark value", "importance": "why it matters"}
+    ]
+  },
+  "competitiveMap": {
+    "leaders": ["company 1", "company 2"],
+    "challengers": ["company 1", "company 2"],
+    "gaps": ["gap 1", "gap 2"],
+    "whitespace": "description of untapped areas"
+  },
+  "actionableStrategies": [
+    {
+      "strategy": "strategy name",
+      "description": "what to do",
+      "resources": "what you need",
+      "timeline": "when",
+      "riskLevel": "low/medium/high"
+    }
+  ],
+  "redFlags": ["warning 1", "warning 2"],
+  "verdict": "One powerful concluding insight about the biggest opportunity right now"
+}`;
+
+  const fetchMarketAnalysis = useCallback(async (category, region, query = "") => {
+    setLoading(true);
+    setError(null);
+    const userPrompt = query
+      ? `Analyze this specific market question: "${query}" for ${region} market in ${category} sector. Return ONLY JSON.`
+      : `Perform comprehensive market intelligence analysis for ${category} sector in ${region} in 2025. Include real market data, needs, wants, demand, finance, opportunities. Return ONLY JSON.`;
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: ANTHROPIC_MODEL,
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error?.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      let text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+      text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+      const s = text.indexOf("{"), e = text.lastIndexOf("}");
+      if (s === -1 || e === -1) throw new Error("No JSON in response");
+      const parsed = JSON.parse(text.slice(s, e + 1));
+      setAnalysisData(parsed);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiKey]);
+
+  const uc = (l) => ({ high: "#ff4d6d", medium: "#fee440", low: "#4cc9f0" }[l] || "#aaa");
+  const ti = (t) => ({ rising: "↑", falling: "↓", stable: "→" }[t] || "→");
+  const tc = (t) => ({ rising: "#00f5d4", falling: "#ff4d6d", stable: "#aaa" }[t] || "#aaa");
+
+  const btn = (active, color = "#00f5d4") => ({
+    padding: "6px 12px", borderRadius: 4, cursor: "pointer", fontSize: 12,
+    border: active ? `1px solid ${color}` : "1px solid #1a1a4a",
+    background: active ? `${color}22` : "transparent",
+    color: active ? color : "#5555aa", transition: "all 0.2s", fontFamily: "inherit",
+  });
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#050510" }}>
+      {/* HEADER */}
+      <div style={{ background: "linear-gradient(135deg,#0a0a2e,#12124a,#0a0a2e)", borderBottom: "1px solid #1a1a4a", padding: "16px 20px", position: "sticky", top: 0, zIndex: 100 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#00f5d4", letterSpacing: "0.1em" }}>◈ MARKET INTEL</div>
+            <div style={{ fontSize: 10, color: "#5555aa" }}>NEEDS · WANTS · DEMAND · FINANCE · OPPORTUNITY</div>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {lastUpdated && <span style={{ fontSize: 10, color: "#5555aa" }}><span style={{ color: "#00f5d4" }}>●</span> {lastUpdated.toLocaleTimeString()}</span>}
+            <button onClick={onLogout} style={{ ...btn(false), fontSize: 10, padding: "4px 8px" }}>CHANGE KEY</button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {categories.map(c => (
+            <button key={c.id} style={btn(selectedCategory === c.id, c.color)} onClick={() => setSelectedCategory(c.id)}>
+              {c.icon} {c.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {regions.map(r => (
+            <button key={r} style={btn(selectedRegion === r, "#9b5de5")} onClick={() => setSelectedRegion(r)}>{r}</button>
+          ))}
+          <button
+            onClick={() => fetchMarketAnalysis(selectedCategory, selectedRegion)}
+            disabled={loading}
+            style={{ marginLeft: "auto", ...btn(true), background: loading ? "#00f5d411" : "#00f5d422", cursor: loading ? "not-allowed" : "pointer" }}
+          >
+            {loading ? "⟳ ANALYZING..." : "⟳ REFRESH"}
+          </button>
+        </div>
+        <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+          <input
+            value={customQuery} onChange={e => setCustomQuery(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && customQuery && fetchMarketAnalysis(selectedCategory, selectedRegion, customQuery)}
+            placeholder="Custom market question... (Enter နှိပ်ပါ)"
+            style={{ flex: 1, padding: "6px 12px", background: "#0a0a2e", border: "1px solid #1a1a4a", borderRadius: 4, color: "#e0e0ff", fontFamily: "inherit", fontSize: 12, outline: "none" }}
+          />
+          <button onClick={() => customQuery && fetchMarketAnalysis(selectedCategory, selectedRegion, customQuery)} disabled={!customQuery || loading}
+            style={{ ...btn(!!customQuery, "#fee440"), padding: "6px 12px" }}>ASK →</button>
+        </div>
+      </div>
+
+      {/* CONTENT */}
+      <div style={{ padding: "16px 20px", maxWidth: 1200, margin: "0 auto" }}>
+        {error && <div style={{ padding: 14, background: "#ff4d6d11", border: "1px solid #ff4d6d44", borderRadius: 6, color: "#ff4d6d", marginBottom: 14, fontSize: 12 }}>⚠ {error}</div>}
+
+        {loading && (
+          <div style={{ textAlign: "center", padding: "80px 20px" }}>
+            <div style={{ fontSize: 36, animation: "spin 1s linear infinite", display: "inline-block" }}>◈</div>
+            <div style={{ color: "#00f5d4", marginTop: 16 }}>Analyzing market intelligence...</div>
+            <div style={{ color: "#5555aa", fontSize: 11, marginTop: 6 }}>AI-powered deep analysis in progress</div>
+          </div>
+        )}
+
+        {!loading && !analysisData && !error && (
+          <div style={{ textAlign: "center", padding: "80px 20px", color: "#5555aa" }}>
+            <div style={{ fontSize: 36 }}>◈</div>
+            <div style={{ marginTop: 12 }}>Category + Region ရွေးပြီး REFRESH နှိပ်ပါ</div>
+          </div>
+        )}
+
+        {!loading && analysisData && (() => {
+          const d = analysisData;
+          return (<>
+            {/* OVERVIEW CARDS */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 16 }}>
+              {[
+                { l: "MARKET SIZE", v: d.marketOverview?.marketSize, c: "#00f5d4" },
+                { l: "GROWTH RATE", v: d.marketOverview?.growthRate, c: "#fee440" },
+                { l: "MATURITY", v: d.marketOverview?.maturity?.toUpperCase(), c: "#9b5de5" },
+                { l: "HEAT", v: `${d.marketOverview?.hotness||0}/100`, c: "#fb5607" },
+              ].map(x => (
+                <div key={x.l} style={{ padding: "12px 14px", background: "#0a0a2e", border: "1px solid #1a1a4a", borderRadius: 6 }}>
+                  <div style={{ fontSize: 10, color: "#5555aa", marginBottom: 4 }}>{x.l}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: x.c }}>{x.v || "—"}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ padding: 14, background: "#0a1a2e", borderLeft: "3px solid #00f5d4", borderRadius: 6, marginBottom: 16, fontSize: 12, color: "#c0c0e0", lineHeight: 1.7 }}>
+              {d.marketOverview?.summary}
+            </div>
+
+            {/* TABS */}
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 14 }}>
+              {[["overview","Needs/Wants/Demand"],["opportunities","Opportunities"],["finance","Finance"],["strategy","Strategy"],["competitive","Competitive"]].map(([id,lbl]) => (
+                <button key={id} style={btn(activeTab===id)} onClick={() => setActiveTab(id)}>{lbl}</button>
+              ))}
+            </div>
+
+            {/* TAB: OVERVIEW */}
+            {activeTab === "overview" && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
+                {/* Needs */}
+                <div style={{ background: "#0a0a2e", border: "1px solid #1a1a4a", borderRadius: 6, padding: 14 }}>
+                  <div style={{ color: "#ff4d6d", fontWeight: 700, marginBottom: 10 }}>▣ NEEDS (လိုအပ်ချက်)</div>
+                  {d.needsAnalysis?.coreNeeds?.map((n,i) => (
+                    <div key={i} style={{ marginBottom: 10, padding: 9, background: "#050510", borderRadius: 4, border: "1px solid #1a1a4a" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                        <span style={{ color: "#e0e0ff", fontWeight: 600, fontSize: 12 }}>{n.need}</span>
+                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: `${uc(n.urgency)}22`, color: uc(n.urgency) }}>{n.urgency?.toUpperCase()}</span>
+                      </div>
+                      <div style={{ color: "#8080aa", fontSize: 11 }}>{n.description}</div>
+                      <div style={{ color: "#ff4d6d", fontSize: 10, marginTop: 4 }}>Gap: {n.gap}</div>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ color: "#5555aa", fontSize: 10, marginBottom: 4 }}>UNMET NEEDS:</div>
+                    {d.needsAnalysis?.unmetNeeds?.map((u,i) => <div key={i} style={{ color: "#fee440", fontSize: 11, marginBottom: 2 }}>→ {u}</div>)}
+                  </div>
+                </div>
+                {/* Wants */}
+                <div style={{ background: "#0a0a2e", border: "1px solid #1a1a4a", borderRadius: 6, padding: 14 }}>
+                  <div style={{ color: "#9b5de5", fontWeight: 700, marginBottom: 10 }}>▣ WANTS (လိုချင်ချက်)</div>
+                  {d.wantsAnalysis?.topWants?.map((w,i) => (
+                    <div key={i} style={{ marginBottom: 10, padding: 9, background: "#050510", borderRadius: 4, border: "1px solid #1a1a4a" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                        <span style={{ color: "#e0e0ff", fontWeight: 600, fontSize: 12 }}>{w.want}</span>
+                        <span style={{ color: tc(w.trend), fontSize: 16 }}>{ti(w.trend)}</span>
+                      </div>
+                      <div style={{ color: "#8080aa", fontSize: 11 }}>{w.description}</div>
+                      <div style={{ fontSize: 10, marginTop: 4 }}><span style={{ color: "#5555aa" }}>Pay willingness: </span><span style={{ color: "#9b5de5" }}>{w.willingnessToPay}</span></div>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ color: "#5555aa", fontSize: 10, marginBottom: 4 }}>EMERGING WANTS:</div>
+                    {d.wantsAnalysis?.emergingWants?.map((e,i) => <div key={i} style={{ color: "#4cc9f0", fontSize: 11, marginBottom: 2 }}>↑ {e}</div>)}
+                  </div>
+                </div>
+                {/* Demand */}
+                <div style={{ background: "#0a0a2e", border: "1px solid #1a1a4a", borderRadius: 6, padding: 14 }}>
+                  <div style={{ color: "#fee440", fontWeight: 700, marginBottom: 10 }}>▣ DEMAND (လိုအင်ဆန္ဒ)</div>
+                  <div style={{ color: "#8080aa", fontSize: 11, marginBottom: 10, lineHeight: 1.6 }}>{d.demandAnalysis?.currentDemand}</div>
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ color: "#00f5d4", fontSize: 10, marginBottom: 4 }}>DRIVERS:</div>
+                    {d.demandAnalysis?.demandDrivers?.map((x,i) => <div key={i} style={{ color: "#c0c0e0", fontSize: 11, marginBottom: 2 }}>✓ {x}</div>)}
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ color: "#ff4d6d", fontSize: 10, marginBottom: 4 }}>BARRIERS:</div>
+                    {d.demandAnalysis?.demandBarriers?.map((x,i) => <div key={i} style={{ color: "#8080aa", fontSize: 11, marginBottom: 2 }}>✗ {x}</div>)}
+                  </div>
+                  <div style={{ padding: 10, background: "#fee44011", border: "1px solid #fee44033", borderRadius: 4 }}>
+                    <div style={{ color: "#fee440", fontSize: 10, marginBottom: 3 }}>12-MONTH FORECAST</div>
+                    <div style={{ color: "#c0c0e0", fontSize: 11 }}>{d.demandAnalysis?.forecast}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: OPPORTUNITIES */}
+            {activeTab === "opportunities" && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14 }}>
+                {d.opportunities?.map((o,i) => (
+                  <div key={i} style={{ background: "#0a0a2e", borderRadius: 6, padding: 14, border: "1px solid #1a1a4a", borderTop: `3px solid ${o.potential==="high"?"#00f5d4":o.potential==="medium"?"#fee440":"#9b5de5"}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                      <div style={{ fontWeight: 700, color: "#e0e0ff", fontSize: 13 }}>{o.title}</div>
+                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: o.potential==="high"?"#00f5d422":"#fee44022", color: o.potential==="high"?"#00f5d4":"#fee440" }}>{o.potential?.toUpperCase()}</span>
+                    </div>
+                    <div style={{ color: "#8080aa", fontSize: 11, marginBottom: 10, lineHeight: 1.6 }}>{o.description}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+                      {[["Time",o.timeToMarket],["Investment",o.investment],["ROI",o.roi],["Difficulty",`${o.difficulty}/100`]].map(([l,v]) => (
+                        <div key={l} style={{ padding: "5px 8px", background: "#050510", borderRadius: 4 }}>
+                          <div style={{ fontSize: 10, color: "#5555aa" }}>{l}</div>
+                          <div style={{ fontSize: 11, color: "#00f5d4" }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ borderTop: "1px solid #1a1a4a", paddingTop: 8 }}>
+                      <div style={{ fontSize: 10, color: "#5555aa", marginBottom: 5 }}>ACTION STEPS:</div>
+                      {o.actionSteps?.map((s,j) => <div key={j} style={{ color: "#c0c0e0", fontSize: 11, marginBottom: 3 }}><span style={{ color: "#00f5d4" }}>{j+1}.</span> {s}</div>)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* TAB: FINANCE */}
+            {activeTab === "finance" && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
+                <div style={{ background: "#0a0a2e", border: "1px solid #fee44033", borderRadius: 6, padding: 14 }}>
+                  <div style={{ color: "#fee440", fontWeight: 700, marginBottom: 12 }}>💰 FINANCIAL INSIGHTS</div>
+                  {[["Avg Margins",d.financialInsights?.avgMargins],["Break-Even",d.financialInsights?.breakEvenTimeline],["Funding",d.financialInsights?.fundingLandscape]].map(([l,v]) => (
+                    <div key={l} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 10, color: "#5555aa", marginBottom: 2 }}>{l}</div>
+                      <div style={{ color: "#fee440", fontSize: 12 }}>{v}</div>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 10, color: "#5555aa", marginBottom: 5 }}>REVENUE MODELS:</div>
+                    {d.financialInsights?.revenueModels?.map((m,i) => <div key={i} style={{ color: "#c0c0e0", fontSize: 11, marginBottom: 3 }}>◆ {m}</div>)}
+                  </div>
+                </div>
+                <div style={{ background: "#0a0a2e", border: "1px solid #1a1a4a", borderRadius: 6, padding: 14 }}>
+                  <div style={{ color: "#4cc9f0", fontWeight: 700, marginBottom: 12 }}>📊 KEY METRICS</div>
+                  {d.financialInsights?.keyMetrics?.map((m,i) => (
+                    <div key={i} style={{ marginBottom: 10, padding: 9, background: "#050510", borderRadius: 4 }}>
+                      <div style={{ color: "#4cc9f0", fontWeight: 600, fontSize: 12, marginBottom: 2 }}>{m.metric}</div>
+                      <div style={{ color: "#fee440", fontSize: 11, marginBottom: 2 }}>{m.benchmark}</div>
+                      <div style={{ color: "#8080aa", fontSize: 10 }}>{m.importance}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: STRATEGY */}
+            {activeTab === "strategy" && (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14, marginBottom: 14 }}>
+                  {d.actionableStrategies?.map((s,i) => (
+                    <div key={i} style={{ background: "#0a0a2e", border: "1px solid #1a1a4a", borderRadius: 6, padding: 14, borderLeft: `3px solid ${s.riskLevel==="low"?"#00f5d4":s.riskLevel==="medium"?"#fee440":"#ff4d6d"}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <div style={{ fontWeight: 700, color: "#e0e0ff", fontSize: 12 }}>{s.strategy}</div>
+                        <span style={{ fontSize: 10, color: s.riskLevel==="low"?"#00f5d4":s.riskLevel==="medium"?"#fee440":"#ff4d6d" }}>{s.riskLevel?.toUpperCase()} RISK</span>
+                      </div>
+                      <div style={{ color: "#8080aa", fontSize: 11, marginBottom: 6, lineHeight: 1.6 }}>{s.description}</div>
+                      <div style={{ fontSize: 11, marginBottom: 2 }}><span style={{ color: "#5555aa" }}>Resources: </span><span style={{ color: "#c0c0e0" }}>{s.resources}</span></div>
+                      <div style={{ fontSize: 11 }}><span style={{ color: "#5555aa" }}>Timeline: </span><span style={{ color: "#00f5d4" }}>{s.timeline}</span></div>
+                    </div>
+                  ))}
+                </div>
+                {d.redFlags?.length > 0 && (
+                  <div style={{ padding: 14, background: "#ff4d6d11", border: "1px solid #ff4d6d33", borderRadius: 6 }}>
+                    <div style={{ color: "#ff4d6d", fontWeight: 700, marginBottom: 8 }}>⚠ RED FLAGS - သတိထားရမည့်အချက်</div>
+                    {d.redFlags.map((f,i) => <div key={i} style={{ color: "#c0c0e0", fontSize: 11, marginBottom: 3 }}>⚡ {f}</div>)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: COMPETITIVE */}
+            {activeTab === "competitive" && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14 }}>
+                {[["MARKET LEADERS",d.competitiveMap?.leaders,"#ff4d6d"],["CHALLENGERS",d.competitiveMap?.challengers,"#fee440"],["MARKET GAPS",d.competitiveMap?.gaps,"#00f5d4"]].map(([lbl,items,c]) => (
+                  <div key={lbl} style={{ background: "#0a0a2e", border: `1px solid ${c}33`, borderRadius: 6, padding: 14 }}>
+                    <div style={{ color: c, fontWeight: 700, marginBottom: 10 }}>{lbl}</div>
+                    {items?.map((x,i) => <div key={i} style={{ color: "#c0c0e0", fontSize: 12, marginBottom: 5, padding: "5px 8px", background: "#050510", borderRadius: 4 }}>{x}</div>)}
+                  </div>
+                ))}
+                <div style={{ background: "#0a0a2e", border: "1px solid #9b5de533", borderRadius: 6, padding: 14, gridColumn: "1/-1" }}>
+                  <div style={{ color: "#9b5de5", fontWeight: 700, marginBottom: 6 }}>🎯 WHITE SPACE OPPORTUNITY</div>
+                  <div style={{ color: "#c0c0e0", lineHeight: 1.7, fontSize: 12 }}>{d.competitiveMap?.whitespace}</div>
+                </div>
+              </div>
+            )}
+
+            {/* VERDICT */}
+            {d.verdict && (
+              <div style={{ marginTop: 16, padding: 18, background: "linear-gradient(135deg,#0a1a2e,#0a0a2e)", border: "1px solid #00f5d4", borderRadius: 6, textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#5555aa", marginBottom: 8 }}>◈ KEY VERDICT</div>
+                <div style={{ color: "#00f5d4", fontSize: 14, fontWeight: 700, lineHeight: 1.7 }}>{d.verdict}</div>
+              </div>
+            )}
+          </>);
+        })()}
+      </div>
+    </div>
+  );
+}
+
+// ─── APP ROOT ────────────────────────────────────────────────────
+function App() {
+  const [apiKey, setApiKey] = useState(() => sessionStorage.getItem("mi_key") || "");
+  const saveKey = (k) => { sessionStorage.setItem("mi_key", k); setApiKey(k); };
+  const logout = () => { sessionStorage.removeItem("mi_key"); setApiKey(""); };
+  if (!apiKey) return <ApiKeyModal onSave={saveKey} />;
+  return <Dashboard apiKey={apiKey} onLogout={logout} />;
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+
+</body>
+</html>
